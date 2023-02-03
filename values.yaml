@@ -32,12 +32,6 @@ prometheus:
       image:
         repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/coreos/configmap-reload
   prometheusSpec:
-    thanos:
-      baseImage: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/quay.io/thanos/thanos
-      version: v0.29.0
-      objectStorageConfig:
-        key: thanos-storage-config.yaml
-        name: thanos-storage-config
     image:
       repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/prometheus/prometheus
     query:
@@ -186,10 +180,6 @@ prometheus:
     logFormat: json
 
 alertmanager:
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {eks.amazonaws.com/role-arn: arn:aws:iam::346319152574:role/prom-thanos-s3-access-role}
   alertmanagerSpec:
     image:
       repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/prometheus/alertmanager
