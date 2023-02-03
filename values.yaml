@@ -1,0 +1,265 @@
+prometheusOperator:
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 150m
+      memory: 150Mi
+  logLevel: warn
+  logFormat: json
+  admissionWebhooks:
+    patch:
+      enabled: true
+      image:
+        repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/kube-webhook-certgen
+  image:
+    repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/coreos/prometheus-operator
+  prometheusConfigReloaderImage:
+    repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/coreos/prometheus-config-reloader
+
+prometheus:
+  ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/affinity: "cookie"
+    hosts:
+    - kube-prometheus.qa.oski.io
+    paths:
+    - /prometheus
+  configmapReload:
+    prometheus:
+      image:
+        repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/coreos/configmap-reload
+  prometheusSpec:
+    thanos:
+      baseImage: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/quay.io/thanos/thanos
+      version: v0.29.0
+      objectStorageConfig:
+        key: thanos-storage-config.yaml
+        name: thanos-storage-config
+    image:
+      repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/prometheus/prometheus
+    query:
+       maxSamples: 100000000
+    additionalScrapeConfigs:
+    - job_name: 'kubernetes-pods'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      # Example relabel to scrape only pods that have
+      # "prometheus.io/scrape = true" annotation.
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      # Example relabel to customize metric path based on pod
+      # "prometheus.io/path = <metric path>" annotation.
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scheme]
+        action: replace
+        target_label: __scheme__
+        regex: (https?)
+      # Example relabel to scrape only single, desired port for the pod
+      # based on pod "prometheus.io/port = <port>" annotation.
+      # Note that __address__ is modified here, so if pod containers' ports
+      # are declared, they all will be ignored.
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod_name
+    - job_name: 'calico-node'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_k8s_app]
+        action: keep
+        regex: "calico-node"
+      - source_labels: [__address__]
+        action: replace
+        regex: ([^:]+)(?::\d+)?
+        replacement: $1:9091
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod_name
+    - job_name: 'calico-typha'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_k8s_app]
+        action: keep
+        regex: "calico-typha"
+      - source_labels: [__address__]
+        action: replace
+        regex: ([^:]+)(?::\d+)?
+        replacement: $1:9093
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod_name
+    - job_name: 'aws-node'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_k8s_app]
+        action: keep
+        regex: "aws-node"
+      - source_labels: [__address__]
+        action: replace
+        regex: ([^:]+)(?::\d+)?
+        replacement: $1:61678
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod_name
+    - job_name: 'rabbitmq-travel'
+      static_configs:
+      - targets:
+        - chai-rabbitmq-n1.qa.cnxloyalty.com:15692
+        - chai-rabbitmq-n2.qa.cnxloyalty.com:15692
+        - chai-rabbitmq-n3.qa.cnxloyalty.com:15692
+    - job_name: 'envoy-stats'
+      metrics_path: /stats/prometheus
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: '.*-envoy-prom'
+    - job_name: 'istiod'
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+          - istio-system
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: istiod;http-monitoring
+    scrapeInterval: 60s
+    replicas: 2
+    routePrefix: /prometheus
+    storageSpec:
+     volumeClaimTemplate:
+       spec:
+         accessModes: ["ReadWriteOnce"]
+         resources:
+           requests:
+             storage: 200Gi
+      #  selector: {}
+    resources:
+      limits:
+        cpu: 1500m
+        memory: 14Gi
+      requests:
+        cpu: 1000m
+        memory: 12Gi
+    retention: 720h            # 30 days
+    logLevel: warn
+    logFormat: json
+
+alertmanager:
+  alertmanagerSpec:
+    image:
+      repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/prometheus/alertmanager
+    replicas: 1
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+        # selector: {}
+    resources:
+      limits:
+        cpu: 80m
+        memory: 128Mi
+      requests:
+        cpu: 24m
+        memory: 42Mi
+    retention: 720h            # 30 days
+    logLevel: warn
+    logFormat: json
+
+kubelet:
+  serviceMonitor:
+    https: true
+
+grafana:
+  image:
+    repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/grafana
+  sidecar:
+    datasources:
+      createPrometheusReplicasDatasources: true
+  resources:
+    limits:
+      cpu: 256m
+      memory: 512Mi
+    requests:
+      cpu: 60m
+      memory: 200Mi
+  grafana.ini:
+    log:
+      level: warn
+    log.console:
+      format: json
+
+prometheus-node-exporter:
+  image:
+    repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/prometheus/node-exporter
+  extraArgs:
+  - "--log.level=warn"
+  - "--log.format=json"
+  resources:
+    limits:
+      cpu: 40m
+      memory: 96Mi
+    requests:
+      cpu: 20m
+      memory: 32Mi
+  priorityClassName: critical
+  tolerations:
+  - key: "nodeRole"
+    operator: "Equal"
+    value: "kiamServer"
+    effect: "NoSchedule"
+
+kube-state-metrics:
+  image:
+    repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/coreos/kube-state-metrics
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 400Mi
+    requests:
+      cpu: 100m
+      memory: 200Mi
