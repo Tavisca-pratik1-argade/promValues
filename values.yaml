@@ -186,6 +186,10 @@ prometheus:
     logFormat: json
 
 alertmanager:
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {eks.amazonaws.com/role-arn: arn:aws:iam::346319152574:role/thanos-dev-cluster-role}
   alertmanagerSpec:
     image:
       repository: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/prometheus/alertmanager
