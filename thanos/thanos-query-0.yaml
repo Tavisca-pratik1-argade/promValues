@@ -5,7 +5,7 @@ metadata:
     app: thanos-query
     part-of: thanos
   name: thanos-query
-  namespace: thanos
+  namespace: monitoring
 spec:
   replicas: 1
   selector:
@@ -40,11 +40,10 @@ spec:
         - --http-address=0.0.0.0:9090
         - --query.replica-label=prometheus_replica
         - --query.replica-label=receive_replica
-        - --store=dnssrv+_grpc._tcp.thanos-store-shard-0.thanos.svc.cluster.local
-        - --store=dnssrv+_grpc._tcp.thanos-receive-default.thanos.svc.cluster.local
-        - --store=dnssrv+_grpc._tcp.thanos-receive-hashring-0.thanos.svc.cluster.local
+        - --store=dnssrv+_grpc._tcp.thanos-store-shard-0.*.svc.cluster.local
+        - --store=dnssrv+_grpc._tcp.prometheus-operated.*.svc.cluster.local
         - --query.timeout=15m
-        image: quay.io/thanos/thanos:v0.29.0
+        image: 346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/quay.io/thanos/thanos:v0.29.0
         livenessProbe:
           failureThreshold: 4
           httpGet:
@@ -75,7 +74,7 @@ metadata:
     app: thanos-query
     part-of: thanos
   name: thanos-query
-  namespace: thanos
+  namespace: monitoring
 spec:
   ports:
   - name: grpc
@@ -95,7 +94,7 @@ metadata:
     app: thanos-query
     part-of: thanos
   name: thanos-query
-  namespace: thanos
+  namespace: monitoring
 spec:
   rules:
   - host: query.local
