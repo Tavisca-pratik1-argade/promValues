@@ -8,7 +8,7 @@
 ## @param global.storageClass Global StorageClass for Persistent Volume(s)
 ##
 global:
-  imageRegistry: "346319152574.dkr.ecr.us-east-1.amazonaws.com/k8s-utilities-images/quay.io/thanos/thanos"
+  imageRegistry: ""
   ## e.g:
   ## imagePullSecrets:
   ##   - myRegistryKeySecretName
