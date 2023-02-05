@@ -54,7 +54,7 @@ extraDeploy: []
 image:
   registry: 346319152574.dkr.ecr.us-east-1.amazonaws.com
   repository: k8s-utilities-images/quay.io/thanos/thanos
-  tag: v0.29.0
+  tag: v0.30.2
   digest: ""
   ## Specify a imagePullPolicy. Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
